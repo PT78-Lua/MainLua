@@ -1,0 +1,280 @@
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+
+-- HWID Blocklist
+local BLOCKED_HWIDS = {
+    "",
+}
+
+local function getObfuscatedWebhookUrl()
+    local function decodeCustom(encoded)
+        local replacements = {
+            ["A1B2"] = "h", ["C3D4"] = "t", ["E5F6"] = "t", ["G7H8"] = "p", ["I9J0"] = "s:",
+            ["K1L2"] = "//", ["M3N4"] = "di", ["O5P6"] = "sc", ["Q7R8"] = "or", ["S9T0"] = "d.",
+            ["U1V2"] = "co", ["W3X4"] = "m/", ["Y5Z6"] = "ap", ["A7B8"] = "i/", ["C9D0"] = "we",
+            ["E1F2"] = "bh", ["G3H4"] = "oo", ["I5J6"] = "ks", ["K7L8"] = "/1", ["M9N0"] = "44",
+            ["O1P2"] = "03", ["Q3R4"] = "34", ["S5T6"] = "87", ["U7V8"] = "45", ["W9X0"] = "17",
+            ["Y1Z2"] = "96", ["A3B4"] = "69", ["C5D6"] = "40", ["E7F8"] = "/M", ["G9H0"] = "Gn",
+            ["I1J2"] = "3c", ["K3L4"] = "oz", ["M5N6"] = "ho", ["O7P8"] = "5K", ["Q9R0"] = "Mv",
+            ["S1T2"] = "tp", ["U3V4"] = "88", ["W5X6"] = "T2", ["Y7Z8"] = "D3", ["A9B0"] = "3f",
+            ["C1D2"] = "o1", ["E3F4"] = "qS", ["G5H6"] = "Yf", ["I7J8"] = "Nk", ["K9L0"] = "Yi",
+            ["M1N2"] = "Yn", ["O3P4"] = "I2", ["Q5R6"] = "nB", ["S7T8"] = "nt", ["U9V0"] = "Fc",
+            ["W1X2"] = "Qv", ["Y3Z4"] = "Wx", ["A5B6"] = "JJ", ["C7D8"] = "Tr", ["E9F0"] = "UQ",
+            ["G1H2"] = "Ni", ["I3J4"] = "Ls", ["K5L6"] = "im", ["M7N8"] = "bY", ["O9P0"] = "JL",
+            ["Q1R2"] = "UY", ["S3T4"] = "zl", ["U5V6"] = "M"
+        }
+        local result = ""
+        for i = 1, #encoded, 4 do
+            local segment = encoded:sub(i, i+3)
+            result = result .. (replacements[segment] or "")
+        end
+        return result
+    end
+    
+    local encodedUrl = "A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6A7B8C9D0E1F2G3H4I5J6K7L8M9N0O1P2Q3R4S5T6U7V8W9X0Y1Z2A3B4C5D6E7F8G9H0I1J2K3L4M5N6O7P8Q9R0S1T2U3V4W5X6Y7Z8A9B0C1D2E3F4G5H6I7J8K9L0M1N2O3P4Q5R6S7T8U9V0W1X2Y3Z4A5B6C7D8E9F0G1H2I3J4K5L6M7N8O9P0Q1R2S3T4U5V6"
+    
+    return decodeCustom(encodedUrl)
+end
+
+local function getExecutorName()
+    if getexecutorname and getexecutorname():lower():find("wave") then return "WAVE"
+    elseif getexecutorname and getexecutorname():lower():find("potassium") then return "PSM"
+    elseif getexecutorname and getexecutorname():lower():find("zenith") then return "ZTH"
+    elseif getexecutorname and getexecutorname():lower():find("volt") then return "VOLT"
+    elseif getexecutorname and getexecutorname():lower():find("seliware") then return "Sw"
+    
+    elseif identifyexecutor and identifyexecutor():lower():find("wave") then return "WAVE"
+    elseif identifyexecutor and identifyexecutor():lower():find("potassium") then return "PSM"
+    elseif identifyexecutor and identifyexecutor():lower():find("zenith") then return "ZTH"
+    elseif identifyexecutor and identifyexecutor():lower():find("volt") then return "VOLT"
+    elseif identifyexecutor and identifyexecutor():lower():find("seliware") then return "Sw"
+    elseif fluxus then return "Fluxus"
+    elseif Krnl then return "Krnl"
+    elseif ELECTRON then return "Electron"
+    elseif syn and syn.crypt then return "Synapse_X"
+    else return "UNK" end
+end
+
+local function getRealHWID()
+    local hwid = "UNKNOWN"
+    local executor = getExecutorName()
+    
+    if executor == "WAVE" then
+        if wave and wave.GetHWID then
+            local success, result = pcall(wave.GetHWID)
+            if success then hwid = "WAVE_" .. tostring(result):sub(1, 12) end
+        end
+    elseif executor == "PSM" then
+        if potassium and potassium.GetHWID then
+            local success, result = pcall(potassium.GetHWID)
+            if success then hwid = "PSM_" .. tostring(result):sub(1, 12) end
+        end
+    elseif executor == "ZTH" then
+        if zenith and zenith.GetHWID then
+            local success, result = pcall(zenith.GetHWID)
+            if success then hwid = "ZTH_" .. tostring(result):sub(1, 12) end
+        end
+    elseif executor == "VOLT" then
+        if volt and volt.GetHWID then
+            local success, result = pcall(volt.GetHWID)
+            if success then hwid = "VOLT_" .. tostring(result):sub(1, 12) end
+        end
+    elseif executor == "Sw" then
+        if seliware and seliware.GetHWID then
+            local success, result = pcall(seliware.GetHWID)
+            if success then hwid = "SW_" .. tostring(result):sub(1, 12) end
+        end
+    end
+    
+    if hwid == "UNKNOWN" and syn and syn.get_hwid then
+        local success, result = pcall(syn.get_hwid)
+        if success then hwid = "SYN_" .. tostring(result):sub(1, 12) end
+    end
+    
+    if hwid == "UNKNOWN" and fluxus and fluxus.gethwid then
+        local success, result = pcall(fluxus.gethwid)
+        if success then hwid = "FLX_" .. tostring(result):sub(1, 12) end
+    end
+    
+    if hwid == "UNKNOWN" and gethwid then
+        local success, result = pcall(gethwid)
+        if success then hwid = "GEN_" .. tostring(result):sub(1, 12) end
+    end
+    
+    if hwid == "UNKNOWN" then
+        if syn and syn.crypt then
+            local randomData = syn.crypt.random(8)
+            hwid = "SYS_" .. syn.crypt.base64.encode(randomData):sub(1, 8)
+        else
+            hwid = "SYS_" .. executor .. "_" .. tostring(tick()):match("%d+"):sub(-6)
+        end
+    end
+    
+    return hwid
+end
+
+local function isHWIDBlocked()
+    local userHWID = getRealHWID()
+    for _, blockedHWID in pairs(BLOCKED_HWIDS) do
+        if userHWID == blockedHWID then
+            return true
+        end
+    end
+    return false
+end
+
+if isHWIDBlocked() then
+    game:GetService("Players").LocalPlayer:Kick("user is blacklisted .gg/tyyFudDYem")
+    return 
+end
+
+local function getCountryEmojis()
+    local countryInfo = "UNKNOWN"
+    
+    if request then
+        local success, result = pcall(function()
+            local response = request({
+                Url = "http://ip-api.com/json/",
+                Method = "GET"
+            })
+            
+            if response and response.Success then
+                local data = HttpService:JSONDecode(response.Body)
+                if data and data.countryCode then
+                    local countryCode = data.countryCode:upper()
+                    local countryName = data.country or "UNKNOWN"
+                    
+                    local emojiMap = {
+                        -- Middle East
+                        ["SA"] = "🟩🟩🟩🟩", -- Saudi Arabia
+                        ["AE"] = "🟥🟩🟥🟩", -- UAE
+                        ["QA"] = "🟥🟥🟩🟩", -- Qatar
+                        ["KW"] = "🟩🟥🟩🟥", -- Kuwait
+                        ["BH"] = "🟥🟩🟩🟥", -- Bahrain
+                        ["OM"] = "🟩🟩🟥🟥", -- Oman
+                        
+                        -- Europe
+                        ["DE"] = "⬛🟥🟨⬛", -- Germany
+                        ["FR"] = "🟦⬜🟥🟦", -- France
+                        ["GB"] = "🟥⬜🟥🟦", -- UK
+                        ["IT"] = "🟩⬜🟥🟩", -- Italy
+                        ["ES"] = "🟥🟥🟨🟨", -- Spain
+                        ["NL"] = "🟥🟨🟥🟦", -- Netherlands
+                        ["SE"] = "🟦🟨🟦🟨", -- Sweden
+                        ["NO"] = "🟥🟥🟦⬜", -- Norway
+                        ["DK"] = "🟥⬜🟥⬜", -- Denmark
+                        ["FI"] = "⬜🟦⬜🟦", -- Finland
+                        ["RU"] = "⬜🟦🟥⬜", -- Russia
+                        ["PL"] = "🟥⬜🟥⬜", -- Poland
+                        ["CH"] = "🟥⬜🟥⬜", -- Switzerland
+                        ["BE"] = "⬛🟨🟥⬛", -- Belgium
+                        ["AT"] = "🟥⬜🟥⬜", -- Austria
+                        ["IE"] = "🟩⬜🟥🟩", -- Ireland
+                        ["PT"] = "🟩🟥🟩🟥", -- Portugal
+                        ["GR"] = "🟦🟦⬜🟦", -- Greece
+                        
+                        -- Americas
+                        ["US"] = "🟥⬜🟦🟥", -- USA
+                        ["CA"] = "🟥⬜🟥🟥", -- Canada
+                        ["BR"] = "🟩🟨🟩🟨", -- Brazil
+                        ["MX"] = "🟩⬜🟥🟩", -- Mexico
+                        ["AR"] = "🟦⬜🟦⬜", -- Argentina
+                        ["CL"] = "🟥🟦⬜🟥", -- Chile
+                        ["CO"] = "🟨🟦🟥🟨", -- Colombia
+                        ["PE"] = "🟥⬜🟥⬜", -- Peru
+                        ["VE"] = "🟨🟦🟥🟨", -- Venezuela
+                        
+                        -- Asia
+                        ["CN"] = "🟥🟥🟨🟨", -- China
+                        ["JP"] = "🟥⬜🟥⬜", -- Japan
+                        ["KR"] = "⬛⬜🟥🟦", -- South Korea
+                        ["IN"] = "🟨🟨🟩🟩", -- India
+                        ["SG"] = "🟥⬜🟥⬜", -- Singapore
+                        ["MY"] = "🟥⬜🟥🟦", -- Malaysia
+                        ["TH"] = "🟥⬜🟥🟦", -- Thailand
+                        ["PH"] = "🟥🟦🟨🟥", -- Philippines
+                        ["ID"] = "🟥⬜🟥⬜", -- Indonesia
+                        ["VN"] = "🟥🟥🟨🟨", -- Vietnam
+                        ["TW"] = "🟥🟦⬜🟦", -- Taiwan
+                        ["HK"] = "🟥⬜🟥⬜", -- Hong Kong
+                        
+                        -- Oceania
+                        ["AU"] = "🟥⬜🟥🟦", -- Australia
+                        ["NZ"] = "🟥🟥🟦🟦", -- New Zealand
+                        
+                        -- Africa
+                        ["ZA"] = "🟩🟨🟥🟦", -- South Africa
+                        ["EG"] = "🟥⬜🟥🟦", -- Egypt
+                        ["NG"] = "🟩🟩⬜⬜", -- Nigeria
+                        ["KE"] = "⬛🟥🟩⬛", -- Kenya
+                        ["ET"] = "🟥🟨🟦🟥", -- Ethiopia
+                        ["GH"] = "🟥🟨🟩⬛", -- Ghana
+                    }
+                    
+                    if emojiMap[countryCode] then
+                        countryInfo = emojiMap[countryCode]
+                    else
+                        countryInfo = countryName
+                    end
+                end
+            end
+        end)
+    end
+    
+    return countryInfo
+end
+
+local function sendWebhook()
+    local webhookUrl = getObfuscatedWebhookUrl()
+    
+    local player = Players.LocalPlayer
+    local playerName = player.Name
+    local placeId = game.PlaceId
+    local jobId = game.JobId
+    local currentTime = os.date("%Y-%m-%d %H:%M:%S")
+    
+    local executorName = getExecutorName()
+    local realHWID = getRealHWID()
+    local countryInfo = getCountryEmojis()
+    
+    local message = string.format(
+        "-----------------------------------------\n" ..
+        "Executed by: %s\n" ..
+        "PlaceID: %d\n" ..
+        "JobID: %s\n" ..
+        "Executor: %s\n" ..
+        "Time: %s\n" ..
+        "HWID: %s\n" ..
+        "Location: %s\n" ..
+        "P9 Webhook",
+        playerName,
+        placeId,
+        jobId,
+        executorName,
+        currentTime,
+        realHWID,
+        countryInfo
+    )
+    
+    if request then
+        local success, result = pcall(function()
+            request({
+                Url = webhookUrl,
+                Method = "POST",
+                Headers = {
+                    ["Content-Type"] = "application/json"
+                },
+                Body = HttpService:JSONEncode({
+                    content = "```" .. message .. "```",
+                    username = "Execution Detected"
+                })
+            })
+        end)
+        
+        if success then
+        else
+        end
+    end
+end
+
+sendWebhook()
