@@ -154,6 +154,7 @@ local function getCountryEmojis()
                         ["OM"] = "🟩🟩🟥🟥", -- Oman
                         
                         -- Europe
+                        ["MD"] = "⬛🟦🟨🟩", -- Moldova
                         ["DE"] = "⬛🟥🟨⬛", -- Germany
                         ["FR"] = "🟦⬜🟥🟦", -- France
                         ["GB"] = "🟥⬜🟥🟦", -- UK
