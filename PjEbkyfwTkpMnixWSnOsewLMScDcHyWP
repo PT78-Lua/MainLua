@@ -1,3 +1,4 @@
+api:notify("Loaded")
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 
