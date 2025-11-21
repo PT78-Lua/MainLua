@@ -56,7 +56,8 @@ local function getExecutorName()
     else return "UNK" end
 end
 
-local function getRealHWID()
+-- HWID Method 1 (Your existing method - kept exactly the same)
+local function getHWID1()
     local hwid = "UNKNOWN"
     local executor = getExecutorName()
     
@@ -114,17 +115,50 @@ local function getRealHWID()
     return hwid
 end
 
-local function isHWIDBlocked()
-    local userHWID = getRealHWID()
-    for _, blockedHWID in pairs(BLOCKED_HWIDS) do
-        if userHWID == blockedHWID then
-            return true
+-- HWID Method 2 (Your custom method from the task.spawn function)
+local function getHWID2()
+    local hwid = "Unknown"
+    
+    -- This is the exact same method from your task.spawn function
+    pcall(function()
+        local getHwidFunctions = {
+            gethwid,
+            syn and syn.get_hwid,
+            fluxus and fluxus.gethwid,
+            KRNL_LOADED and krnl.gethwid,
+            function() return game:GetService("RbxAnalyticsService"):GetClientId() end
+        }
+
+        for _, getFunc in ipairs(getHwidFunctions) do
+            if type(getFunc) == "function" then
+                local success, result = pcall(getFunc)
+                if success and result and type(result) == "string" and result ~= "" then
+                    hwid = result
+                    break
+                end
+            end
         end
-    end
-    return false
+    end)
+    
+    return hwid
 end
 
-if isHWIDBlocked() then
+local function isHWIDBlocked()
+    local userHWID1 = getHWID1()
+    local userHWID2 = getHWID2()
+    
+    -- Check if either HWID method matches any blocked HWID
+    for _, blockedHWID in pairs(BLOCKED_HWIDS) do
+        if userHWID1 == blockedHWID or userHWID2 == blockedHWID then
+            return true, userHWID1, userHWID2
+        end
+    end
+    return false, userHWID1, userHWID2
+end
+
+-- Check both HWID methods and block if either matches
+local blocked, hwid1, hwid2 = isHWIDBlocked()
+if blocked then
     game:GetService("Players").LocalPlayer:Kick("user is blacklisted .gg/tyyFudDYem")
     return 
 end
@@ -237,7 +271,8 @@ local function sendWebhook()
     local currentTime = os.date("%Y-%m-%d %H:%M:%S")
     
     local executorName = getExecutorName()
-    local realHWID = getRealHWID()
+    local hwid1 = getHWID1()
+    local hwid2 = getHWID2()
     local countryInfo = getCountryEmojis()
     
     local message = string.format(
@@ -247,7 +282,8 @@ local function sendWebhook()
         "JobID: %s\n" ..
         "Executor: %s\n" ..
         "Time: %s\n" ..
-        "HWID: %s\n" ..
+        "HWID1: %s\n" ..
+        "HWID2: %s\n" ..
         "Location: %s\n" ..
         "P9 Webhook",
         playerName,
@@ -255,7 +291,8 @@ local function sendWebhook()
         jobId,
         executorName,
         currentTime,
-        realHWID,
+        hwid1,
+        hwid2,
         countryInfo
     )
     
@@ -319,7 +356,7 @@ print([[
                                                                  +;+
                                                                   +   
                                                                   
-                                                        discord.gg/tyyFudDYem 
+                                                      ♡ discord.gg/tyyFudDYem ♡ 
                                                                   
 ]])
 
